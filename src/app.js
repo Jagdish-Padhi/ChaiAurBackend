@@ -11,24 +11,24 @@ app.use(
   })
 );
 
+//MIDDLEWARES
+
 //json data handle ke liye
-app.use(
-  express.json({
-    limit: "16kb",
-  })
-);
+app.use(express.json({ limit: "16kb" }));
 
 //encoded url ko smjhne ke liye
-app.use(
-  express.urlencoded({
-    extended: true,
-    limit: "16kb",
-  })
-);
+app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 
 //to access public assets
 app.use(express.static("public"));
 
 //to access/set cookies from user browser and perform CRUD operations
 app.use(cockieParser());
+
+//ROUTES import
+import userRouter from "./routes/user.routes.js";
+
+//Routes Declaration
+app.use("/api/v1/users", userRouter);
+
 export { app };
