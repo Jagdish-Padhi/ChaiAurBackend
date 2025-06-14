@@ -9,7 +9,6 @@ import { ApiResponse } from "../utils/apiResponse.js";
 const registerUser = asyncHandler(async (req, res) => {
   //Get user details from frontend
   const { username, fullName, email, password } = req.body;
-  console.log("email: ", email);
 
   //validations
   if (
@@ -19,7 +18,7 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 
   //check if user already exists: username, email
-  const exitedUser = User.findOne({
+  const exitedUser = await User.findOne({
     $or: [{ username }, { email }],
   });
 
@@ -32,13 +31,18 @@ const registerUser = asyncHandler(async (req, res) => {
   const coverImageLocalPath = req.files?.coverImage[0]?.path;
 
   if (!avatarLocalPath) {
-    throw new ApiError(400, "Avatar file is required");
+    throw new ApiError(400, "Avatar file path is required");
   }
 
   //upload them to cloudinary, avtar
 
   const avatar = await uploadOnCloudinary(avatarLocalPath);
-  const coverImage = await uploadOnCloudinary(coverImage);
+  const coverImage = await uploadOnCloudinary(coverImageLocalPath);
+
+
+  console.log(avatar);
+  console.log(coverImage);
+
 
   if (!avatar) {
     throw new ApiError(400, "Avatar file is required");
@@ -51,7 +55,7 @@ const registerUser = asyncHandler(async (req, res) => {
     coverImage: coverImage?.url || "",
     email,
     password,
-    username: username.toLowercase,
+    username: username.toLowerCase,
   });
 
   //remove password and refresh token field from response

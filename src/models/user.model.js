@@ -37,7 +37,7 @@ const userSchema = new mongoose.Schema(
       index: true,
     },
 
-    avtar: {
+    avatar: {
       type: String, //cloudnary URL
       required: true,
     },
