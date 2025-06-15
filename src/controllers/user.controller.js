@@ -9,7 +9,7 @@ import { ApiResponse } from "../utils/apiResponse.js";
 const registerUser = asyncHandler(async (req, res) => {
   //Get user details from frontend
   const { username, fullName, email, password } = req.body;
-
+  
   //validations
   if (
     [fullName, email, username, password].some((field) => field?.trim() === "")
@@ -28,21 +28,30 @@ const registerUser = asyncHandler(async (req, res) => {
 
   //check for images, avtar
   const avatarLocalPath = req.files?.avatar[0]?.path;
-  const coverImageLocalPath = req.files?.coverImage[0]?.path;
+
+  // const coverImageLocalPath = req.files?.coverImage[0]?.path;
+  //agar coverImage na diya to error aa rha tha so normal IF statement use!
+  //OR if (coverImageLocalPath) {
+  //   await uploadOnCloudinary(coverImageLocalPath);
+  // }
+
+
+  let coverImageLocalPath;
+  if (
+    req.files &&
+    Array.isArray(req.files.coverImage) &&
+    req.files.coverImage.length > 0
+  ) {
+    coverImageLocalPath = req.files.coverImage[0].path;
+  }
 
   if (!avatarLocalPath) {
     throw new ApiError(400, "Avatar file path is required");
   }
 
-  //upload them to cloudinary, avtar
-
+  //upload them to cloudinary, avatar
   const avatar = await uploadOnCloudinary(avatarLocalPath);
   const coverImage = await uploadOnCloudinary(coverImageLocalPath);
-
-
-  console.log(avatar);
-  console.log(coverImage);
-
 
   if (!avatar) {
     throw new ApiError(400, "Avatar file is required");
@@ -69,11 +78,9 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 
   //return response
-
-  return res.status(201).json(
-    new ApiResponse(200, createdUser, "User registered successfully!")
-  )
-
+  return res
+    .status(201)
+    .json(new ApiResponse(200, createdUser, "User registered successfully!"));
 });
 
 export { registerUser };
