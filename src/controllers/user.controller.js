@@ -4,12 +4,30 @@ import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 
+const generateAccessAndRefreshTokens = async (userId) => {
+  try {
+    const user = User.findById(userId);
+    const accessToken = user.generateAccessToken();
+    const refreshToken = user.generateRefreshToken();
+
+    user.refreshToken = refreshToken;
+    await user.save({ validateBeforeSave: false });
+
+    return { accessToken, refreshToken };
+  } catch (err) {
+    throw new ApiError(
+      500,
+      "Something went wrong while generating refresh and access token!"
+    );
+  }
+};
+
 //REGISTRATION OF USER
 
 const registerUser = asyncHandler(async (req, res) => {
   //Get user details from frontend
   const { username, fullName, email, password } = req.body;
-  
+
   //validations
   if (
     [fullName, email, username, password].some((field) => field?.trim() === "")
@@ -34,7 +52,6 @@ const registerUser = asyncHandler(async (req, res) => {
   //OR if (coverImageLocalPath) {
   //   await uploadOnCloudinary(coverImageLocalPath);
   // }
-
 
   let coverImageLocalPath;
   if (
@@ -83,4 +100,94 @@ const registerUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, createdUser, "User registered successfully!"));
 });
 
-export { registerUser };
+// LOGIN OF USER
+
+const loginUser = asyncHandler(async (req, res) => {
+  const { username, email, password } = req.body;
+
+  if (!username || !email) {
+    throw new ApiError(400, "username or password is required");
+  }
+
+  const user = await User.findOne({
+    $or: [{ username }, { email }],
+  });
+
+  if (!user) {
+    throw new ApiError(404, "User not exists");
+  }
+
+  const isPasswordValid = await user.isPasswordCorrect(password);
+
+  if (!isPasswordValid) {
+    throw new ApiError(401, "Invalid user credentials");
+  }
+
+  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
+    user._id
+  );
+
+  //VERY IMPORTANT:ab yaha pe ye ratna nahi hai logically sochna
+  //pahle jo user object findone kiya tha above humare pass uska ref
+  //hai aur generateAccessAndRefreshTokens method to niche call kiya
+  //so us user object me refreshToken EMPTY hoga So.....
+  //AAPKE PASS 2 OPTIONS HAIN ya to 1 aur db query karke firse user
+  //object findone kar...OR....usi user object ko update karo....
+  //agar db query expensive hai then choose to update otherwise
+  //apply 1 more db query to get user object.... SIMPLE LOGIC!
+
+  const loggedInUser = await User.findById(user._id).select(
+    "-password -refreshToken"
+  );
+
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+      new ApiResponse(
+        200,
+        {
+          user: loggedInUser,
+          accessToken,
+          refreshToken,
+        },
+        "User loggedIn successfully!"
+      )
+    );
+});
+
+//LOGOUT OF USER
+
+const logoutUser = asyncHandler(async (req, res) => {
+  await User.findByIdAndDelete(
+    req.user._id,
+    {
+      $set: {
+        refreshToken: undefined,
+      },
+    },
+
+    {
+      new: true, //response me updated value milega!
+    }
+  );
+
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+
+  return res
+    .status(200)
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
+    .jeson(new ApiResponse(200, {}, "User logged out successfully!"));
+});
+
+export { registerUser, loginUser, logoutUser };
