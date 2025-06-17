@@ -6,7 +6,7 @@ import { ApiResponse } from "../utils/apiResponse.js";
 
 const generateAccessAndRefreshTokens = async (userId) => {
   try {
-    const user = User.findById(userId);
+    const user = await User.findById(userId);
     const accessToken = user.generateAccessToken();
     const refreshToken = user.generateRefreshToken();
 
@@ -30,7 +30,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
   //validations
   if (
-    [fullName, email, username, password].some((field) => field?.trim() === "")
+    [fullName, email, username, password].some((field) => String(field)?.trim() === "")
   ) {
     throw new ApiError(400, "All fields are required!");
   }
@@ -105,7 +105,7 @@ const registerUser = asyncHandler(async (req, res) => {
 const loginUser = asyncHandler(async (req, res) => {
   const { username, email, password } = req.body;
 
-  if (!username || !email) {
+  if (!(username || email)) {
     throw new ApiError(400, "username or password is required");
   }
 
@@ -187,7 +187,7 @@ const logoutUser = asyncHandler(async (req, res) => {
     .status(200)
     .clearCookie("accessToken", options)
     .clearCookie("refreshToken", options)
-    .jeson(new ApiResponse(200, {}, "User logged out successfully!"));
+    .json(new ApiResponse(200, {}, "User logged out successfully!"));
 });
 
 export { registerUser, loginUser, logoutUser };
