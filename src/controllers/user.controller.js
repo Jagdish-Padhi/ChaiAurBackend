@@ -193,7 +193,6 @@ const logoutUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "User logged out successfully!"));
 });
 
-
 //REFRESHING ACCESS TOKEN
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
@@ -247,4 +246,70 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   }
 });
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken };
+//UPDATION CONTROLLERS
+
+const changeCurrentPassword = asyncHandler(async (req, res) => {
+  const { oldPassword, newPassword } = req.body;
+
+  const user = await User.findById(req.user?._id);
+
+  const issPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+
+  if (!issPasswordCorrect) {
+    ApiError(400, "Invalid password!");
+  }
+
+  user.password = newPassword;
+
+  await user.save({ validateBeforeSave: false });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Password changed successfully!"));
+});
+
+const getCurrentUser = asyncHandler(async (req, res) => {
+  return res
+    .status(200)
+    .json(200, req.user, "Current user fetched successfully!");
+});
+
+const updateAccountDetails = asyncHandler(async (req, res) => {
+  //BEST PRACTICE: agar kahi pe file update karana ho to
+  //make seperate controller for that!
+
+  const { fullName, email } = req.body;
+
+  if (!(fullName || email)) {
+    throw new ApiError(400, "All fields are required!");
+  }
+
+  const user = User.findOneAndUpdate(
+    req.user?._id,
+    {
+      $set: {
+        // fullName: fullName,
+        // email: email,
+
+        // OR
+
+        fullName,
+        email,
+      },
+    },
+    { new: true }
+  ).select("-password");
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "Account details updated successfully!"));
+});
+
+export {
+  registerUser,
+  loginUser,
+  logoutUser,
+  refreshAccessToken,
+  changeCurrentPassword,
+  getCurrentUser,
+};
